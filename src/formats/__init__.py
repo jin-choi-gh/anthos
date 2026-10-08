@@ -1,3 +1,3 @@
 from models import Format
 
-FORMATS: tuple[Format, ... ] = ()
+FORMATS: tuple[Format, ...] = ()
