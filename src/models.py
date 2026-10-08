@@ -69,8 +69,5 @@ class Format:
     def transcribe(self, descriptions: tuple[UnitDescription, ...]) -> Substrate:
         raise NotImplementedError
 
-
-
-
-
-
+class SynthesisError(Exception):
+    """Something went wrong in the process of synthesising the textual complex"""
