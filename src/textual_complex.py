@@ -42,7 +42,10 @@ def choose_base(representations: tuple[Representation, ...]) -> Representation:
 
 
 def make_substrate(base: Representation) -> Substrate:
-    return base.format.transcribe(base.format.read(base))
+    try:
+        return base.format.transcribe(base.format.read(base))
+    except SynthesisError as error:
+        raise SynthesisError(f"{base.path}: {error}") from error
 
 
 def main(argv=None):

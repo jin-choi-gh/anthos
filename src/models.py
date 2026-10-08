@@ -39,6 +39,16 @@ class Line:
 class Substrate:
     lines: tuple[Line, ...]
 
+    def __post_init__(self) -> None:
+        if not self.lines:
+            raise SynthesisError("the substrate has no lines")
+
+        seen: set[str] = set()
+        for line in self.lines:
+            if line.id in seen:
+                raise SynthesisError(f"two lines are called {line.id}")
+            seen.add(line.id)
+
 
 @dataclass(frozen=True)
 class UnitDescription:
@@ -51,9 +61,9 @@ class UnitDescription:
 @dataclass(frozen=True)
 class Rank:
     name: str
-    parents: frozenset[str]
-    values: frozenset[str] | None
-    is_point: bool
+    parents: frozenset[str] = frozenset()
+    values: frozenset[str] | None = frozenset()
+    is_point: bool = False
 
 
 @dataclass(frozen=True)
