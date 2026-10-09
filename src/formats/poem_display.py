@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 from models import (
+    Alignment,
     Format,
     Line,
     Rank,
@@ -22,25 +23,31 @@ POEM = Rank(name="poem")
 STANZA = Rank(name="stanza", parents=frozenset({"poem"}))
 LINE = Rank(name="line", parents=frozenset({"stanza"}), values=None)
 
+EXACT = Alignment(
+    compare=lambda a, b: a == b,
+    may_skip=lambda c: False,
+    line_break_matches=None,
+)
+
 
 class PoemDisplay(Format):
     name = "poem-display"
     suffix = ".display.xml"
-    can_be_base = True
     ranks = {rank.name: rank for rank in (POEM, STANZA, LINE)}
+    alignment = EXACT
+    can_be_base = True
 
     def read(self, representation: Representation) -> tuple[UnitDescription, ...]:
-        path = representation.path
         try:
             root = ET.fromstring(representation.source)
         except ET.ParseError as error:
-            raise SynthesisError(f"{path}: not well-formed XML: {error}")
+            raise SynthesisError(f"not well-formed XML: {error}")
 
         body = root.find(f"{TEI}text/{TEI}body")
         if body is None:
-            raise SynthesisError(f"{path}: no <text>/<body> element")
+            raise SynthesisError("no <text>/<body> element")
 
-        return describe_children(body, path)
+        return describe_children(body, representation.path)
 
     def transcribe(self, descriptions: tuple[UnitDescription, ...]) -> Substrate:
         lines = tuple(
@@ -78,13 +85,13 @@ def describe(element: ET.Element, path: Path) -> tuple[UnitDescription, ...]:
 def describe_line(element: ET.Element, path: Path) -> UnitDescription:
     line_id = element.get(XML_ID)
     if not line_id:
-        raise SynthesisError(f"{path}: a line has no xml:id")
+        raise SynthesisError("a line has no xml:id")
 
     text = unicodedata.normalize("NFC", "".join(element.itertext()))
     if not text:
-        raise SynthesisError(f"{path}: line {line_id} is empty")
+        raise SynthesisError(f"line {line_id} is empty")
     if text != text.strip():
-        raise SynthesisError(f"{path}: line {line_id} has whitespace at its edges")
+        raise SynthesisError(f"line {line_id} has whitespace at its edges")
 
     match = INDENT.search(element.get("rend", ""))
     indent = match.group(1) if match else "0"

@@ -3,7 +3,15 @@ import sys
 from pathlib import Path
 
 from formats import FORMATS
-from models import Format, Representation, Substrate, SynthesisError
+from matching import match
+from models import (
+    Format,
+    Representation,
+    Schema,
+    Substrate,
+    SynthesisError,
+    UnitDescription,
+)
 
 
 def load(path: Path, formats: tuple[Format, ...] = FORMATS) -> Representation:
@@ -28,6 +36,13 @@ def load(path: Path, formats: tuple[Format, ...] = FORMATS) -> Representation:
     return Representation(path=path, format=chosen, source=source, name=name)
 
 
+def read(representation: Representation) -> tuple[UnitDescription, ...]:
+    try:
+        return representation.format.read(representation)
+    except SynthesisError as error:
+        raise SynthesisError(f"{representation.path}: {error}") from error
+
+
 def choose_base(representations: tuple[Representation, ...]) -> Representation:
     candidates = [r for r in representations if r.format.can_be_base]
 
@@ -41,11 +56,24 @@ def choose_base(representations: tuple[Representation, ...]) -> Representation:
     raise SynthesisError(f"several files could be the base: {paths}")
 
 
-def make_substrate(base: Representation) -> Substrate:
+def make_substrate(
+    base: Representation, descriptions: tuple[UnitDescription, ...]
+) -> Substrate:
     try:
-        return base.format.transcribe(base.format.read(base))
+        return base.format.transcribe(descriptions)
     except SynthesisError as error:
         raise SynthesisError(f"{base.path}: {error}") from error
+
+
+def make_schema(
+    representation: Representation,
+    descriptions: tuple[UnitDescription, ...],
+    substrate: Substrate,
+) -> Schema:
+    try:
+        return match(representation, descriptions, substrate)
+    except SynthesisError as error:
+        raise SynthesisError(f"{representation.path}: {error}") from error
 
 
 def main(argv=None):
@@ -58,11 +86,17 @@ def main(argv=None):
 
     try:
         representations = tuple(load(path) for path in args.files)
+        descriptions = {r.path: read(r) for r in representations}
+
         base = choose_base(representations)
-        substrate = make_substrate(base)
+        substrate = make_substrate(base, descriptions[base.path])
 
         for line in substrate.lines:
             print(f"{line.id:>4} {line.text}")
+
+        schemata = tuple(
+            make_schema(r, descriptions[r.path], substrate) for r in representations
+        )
 
     except SynthesisError as e:
         sys.exit(f"error: {e}")
