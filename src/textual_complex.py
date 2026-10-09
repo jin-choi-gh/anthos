@@ -6,10 +6,12 @@ from formats import FORMATS
 from matching import match
 from models import (
     Format,
+    Position,
     Representation,
     Schema,
     Substrate,
     SynthesisError,
+    Unit,
     UnitDescription,
 )
 
@@ -76,6 +78,24 @@ def make_schema(
         raise SynthesisError(f"{representation.path}: {error}") from error
 
 
+def show(schema: Schema, substrate: Substrate) -> None:
+    def at(position: Position) -> str:
+        return f"{substrate.lines[position.line].id}@{position.offset}"
+
+    def show_unit(unit: Unit, depth: int) -> None:
+        value = f"  [{unit.value}]" if unit.value is not None else ""
+        print(
+            f"{'  ' * depth}{unit.rank.name} {unit.local_id}  "
+            f"{at(unit.span.start)}–{at(unit.span.end)}{value}"
+        )
+        for child in schema.children(unit):
+            show_unit(child, depth + 1)
+
+    print(f"schema {schema.name}: {len(schema.units)} units")
+    for root in schema.roots():
+        show_unit(root, 0)
+
+
 def main(argv=None):
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Create a textual complex.")
@@ -91,13 +111,12 @@ def main(argv=None):
         base = choose_base(representations)
         substrate = make_substrate(base, descriptions[base.path])
 
-        for line in substrate.lines:
-            print(f"{line.id:>4} {line.text}")
-
         schemata = tuple(
             make_schema(r, descriptions[r.path], substrate) for r in representations
         )
 
+        for schema in schemata:
+            show(schema, substrate)
     except SynthesisError as e:
         sys.exit(f"error: {e}")
 
