@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from models import Atom, Position, Schema, Span, Substrate, TextualComplex, Unit
+from models import Atom, Position, Schema, Span, Substrate, Version, Unit
 
 
 @dataclass
@@ -72,10 +72,10 @@ def find_membership(drafts: AtomDrafts, schemata: dict[str, Schema]):
 
 def integrate(
     substrate: Substrate, schemata: dict[str, Schema], base_schema: str
-) -> TextualComplex:
-    """Join schemata over one substrate into the textual complex."""
+) -> Version:
+    """Join schemata over one substrate into the textual version."""
     cuts = find_cuts(substrate, schemata)
     drafts = AtomDrafts(cut_atoms(substrate, cuts))
     find_membership(drafts, schemata)
     atoms = tuple(draft.finish(substrate) for draft in drafts.all)
-    return TextualComplex(substrate, schemata, atoms, base_schema)
+    return Version(substrate, schemata, atoms, base_schema)

@@ -7,12 +7,11 @@ from integration import integrate
 from matching import match
 from models import (
     Format,
-    Position,
     Representation,
     Schema,
     Substrate,
     SynthesisError,
-    TextualComplex,
+    Version,
     Unit,
     UnitDescription,
 )
@@ -80,15 +79,15 @@ def make_schema(
         raise SynthesisError(f"{representation.path}: {error}") from error
 
 
-def show_complex(textual_complex: TextualComplex) -> None:
+def show_version(version: Version) -> None:
     """Every line's atoms, each with its innermost unit in every schema."""
-    names = list(textual_complex.schemata)
+    names = list(version.schemata)
 
     def label(unit: Unit | None) -> str:
         return "–" if unit is None else f"{unit.rank.name} {unit.local_id}"
 
     print(f"{'atom':12}" + "".join(f"{name:22}" for name in names))
-    for line, atoms in textual_complex.lines():
+    for line, atoms in version.lines():
         print(f"── {line.id}: {line.text}")
         for atom in atoms:
             cells = [label(atom.innermost.get(name)) for name in names]
@@ -115,9 +114,9 @@ def main(argv=None):
             for r in representations
         }
 
-        textual_complex = integrate(substrate, schemata, base.name)
+        version = integrate(substrate, schemata, base.name)
 
-        show_complex(textual_complex)
+        show_version(version)
 
     except SynthesisError as e:
         sys.exit(f"error: {e}")

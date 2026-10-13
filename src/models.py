@@ -179,7 +179,7 @@ class Atom:
 
 
 @dataclass(frozen=True)
-class TextualComplex:
+class Version:
     substrate: Substrate
     schemata: dict[str, Schema]
     atoms: tuple[Atom, ...]
