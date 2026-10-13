@@ -3,7 +3,6 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-
 from models import (
     Alignment,
     Format,

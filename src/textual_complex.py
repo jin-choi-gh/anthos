@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from formats import FORMATS
+from integration import integrate
 from matching import match
 from models import (
     Format,
@@ -11,6 +12,7 @@ from models import (
     Schema,
     Substrate,
     SynthesisError,
+    TextualComplex,
     Unit,
     UnitDescription,
 )
@@ -78,22 +80,19 @@ def make_schema(
         raise SynthesisError(f"{representation.path}: {error}") from error
 
 
-def show(schema: Schema, substrate: Substrate) -> None:
-    def at(position: Position) -> str:
-        return f"{substrate.lines[position.line].id}@{position.offset}"
+def show_complex(textual_complex: TextualComplex) -> None:
+    """Every line's atoms, each with its innermost unit in every schema."""
+    names = list(textual_complex.schemata)
 
-    def show_unit(unit: Unit, depth: int) -> None:
-        value = f"  [{unit.value}]" if unit.value is not None else ""
-        print(
-            f"{'  ' * depth}{unit.rank.name} {unit.local_id}  "
-            f"{at(unit.span.start)}–{at(unit.span.end)}{value}"
-        )
-        for child in schema.children(unit):
-            show_unit(child, depth + 1)
+    def label(unit: Unit | None) -> str:
+        return "–" if unit is None else f"{unit.rank.name} {unit.local_id}"
 
-    print(f"schema {schema.name}: {len(schema.units)} units")
-    for root in schema.roots():
-        show_unit(root, 0)
+    print(f"{'atom':12}" + "".join(f"{name:22}" for name in names))
+    for line, atoms in textual_complex.lines():
+        print(f"── {line.id}: {line.text}")
+        for atom in atoms:
+            cells = [label(atom.innermost.get(name)) for name in names]
+            print(f"{atom.text!r:12}" + "".join(f"{cell:22}" for cell in cells))
 
 
 def main(argv=None):
@@ -111,12 +110,15 @@ def main(argv=None):
         base = choose_base(representations)
         substrate = make_substrate(base, descriptions[base.path])
 
-        schemata = tuple(
-            make_schema(r, descriptions[r.path], substrate) for r in representations
-        )
+        schemata = {
+            r.name: make_schema(r, descriptions[r.path], substrate)
+            for r in representations
+        }
 
-        for schema in schemata:
-            show(schema, substrate)
+        textual_complex = integrate(substrate, schemata, base.name)
+
+        show_complex(textual_complex)
+
     except SynthesisError as e:
         sys.exit(f"error: {e}")
 
